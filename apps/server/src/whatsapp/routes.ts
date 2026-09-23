@@ -31,6 +31,7 @@ export async function webhookRoutes(app: FastifyInstance, ctx: AppContext): Prom
     const { rows } = await ctx.db.query<{ id: number }>('INSERT INTO webhook_events (payload) VALUES ($1) RETURNING id', [
       JSON.stringify(payload),
     ]);
+    req.log.info({ eventId: rows[0]!.id }, 'webhook received');
     await ctx.queue.send('webhook.process', { eventId: rows[0]!.id });
     return reply.code(200).send({ ok: true });
   });

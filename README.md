@@ -93,7 +93,7 @@ Handles Android and iOS exports, Arabic-locale dates (٣١/١٢/٢٠٢٥، ٩:١
 pnpm typecheck && pnpm lint && pnpm test   # tests need Postgres: TEST_DATABASE_URL (default postgres://wa:wa@localhost:5432/wa_test)
 ```
 
-- **53 tests:**
+- **56 tests:**
   - signature verification, webhook normalization (text, voice, image, location, status, echo, history);
   - Arabic normalization and Arabizi detection;
   - chat-export parsing;
