@@ -57,7 +57,7 @@ export class PgBossQueue implements JobQueue {
     await this.ensureStarted();
     for (const name of JOB_NAMES) {
       const handler = handlers[name] as (d: unknown) => Promise<void>;
-      await this.boss.work(name, { localConcurrency: name === 'message.analyze' ? 4 : 1 }, async (jobs) => {
+      await this.boss.work(name, { localConcurrency: name === 'message.analyze' ? 4 : 1, pollingIntervalSeconds: 1 }, async (jobs) => {
         for (const job of jobs) {
           try {
             await handler(job.data);

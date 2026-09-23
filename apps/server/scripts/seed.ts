@@ -47,6 +47,8 @@ const report = await generateReport(ctx, { start: new Date(Date.now() - 4 * 24 *
 console.log(`report ${report.id} generated`);
 
 const { rows: admin } = await db.query<{ id: string }>('SELECT id FROM users WHERE role = $1 ORDER BY created_at LIMIT 1', ['admin']);
+// Re-running the seed rotates the demo token instead of piling them up.
+await db.query(`UPDATE api_tokens SET revoked_at = now() WHERE name = 'demo seed' AND revoked_at IS NULL`);
 const token = await createApiToken(db, SYSTEM, { userId: admin[0]!.id, name: 'demo seed', scopes: ['read', 'draft'] });
 
 const counts = await db.query(

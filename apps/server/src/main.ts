@@ -11,8 +11,8 @@ const cfg = loadConfig();
 const db = createDb(cfg.DATABASE_URL);
 await migrate(db, (m) => console.log(`[migrate] ${m}`));
 
-let app: Awaited<ReturnType<typeof buildApp>> | undefined;
-const queue = new PgBossQueue(cfg.DATABASE_URL, (err) => app?.log.error({ err }, 'job failed'));
+// The error callback only fires after startup, by which time ctx.log is the app logger.
+const queue = new PgBossQueue(cfg.DATABASE_URL, (err) => ctx.log.error({ err }, 'job failed'));
 const ctx: AppContext = {
   cfg,
   db,
@@ -23,7 +23,7 @@ const ctx: AppContext = {
   businessProfile: loadBusinessProfile(cfg),
 };
 
-app = await buildApp(ctx);
+const app = await buildApp(ctx);
 ctx.log = app.log;
 await ensureAdmin(ctx);
 await queue.register(jobHandlers(ctx));
@@ -37,8 +37,8 @@ app.log.info({ waMode: cfg.WA_MODE, ai: ctx.ai.name, url: cfg.PUBLIC_URL }, 'rea
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.once(signal, async () => {
-    app?.log.info(`${signal} received, shutting down`);
-    await app?.close();
+    app.log.info(`${signal} received, shutting down`);
+    await app.close();
     await queue.stop();
     await db.end();
     process.exit(0);
