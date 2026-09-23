@@ -27,6 +27,8 @@ Hosts that run containers work well: Render, Railway, Fly.io, or any VPS. Server
   - Free Postgres databases **expire** after a limited period (check Render's current policy).
 - For real use, switch the service to **Starter** and the database to a paid plan. You can do this in the Render dashboard, or by editing `plan:` in `render.yaml`.
 
+**Environment variables:** [`.env.render.example`](../.env.render.example) lists every key, split into *required now*, *required to go live* and *optional*. Fill it in and paste it into **Environment → Add from .env**.
+
 ## Option B: Railway
 
 1. **New Project → Deploy from GitHub repo.** Railway detects the `Dockerfile`.
