@@ -1,0 +1,57 @@
+# Render Blueprint: one Docker web service (API + webhook + MCP + dashboard) and Postgres.
+# Deploy: Render dashboard → New → Blueprint → pick this repo.
+# Free plans are fine for a demo; for live WhatsApp traffic use web `starter` (free services
+# sleep after ~15 min idle, delaying webhooks) and a paid database (free databases expire).
+services:
+  - type: web
+    name: whatsapp-ai
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: whatsapp-ai-db
+          property: connectionString
+      # Demo mode by default: switch to live/openai later in the dashboard.
+      - key: WA_MODE
+        value: mock
+      - key: AI_PROVIDER
+        value: mock
+      - key: DEMO_SEED_ON_BOOT
+        value: "true"
+      - key: REPORT_LANGUAGE
+        value: en
+      # Secrets Render generates for you (copy WA_VERIFY_TOKEN into Meta's webhook settings).
+      - key: COOKIE_SECRET
+        generateValue: true
+      - key: WA_VERIFY_TOKEN
+        generateValue: true
+      # Replace with your Meta App secret when going live; generated so the app boots in demo mode.
+      - key: WA_APP_SECRET
+        generateValue: true
+      # Prompted when you create the Blueprint.
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      # Fill these in when going live (leave empty for the demo).
+      - key: WA_PHONE_NUMBER_ID
+        sync: false
+      - key: WA_BUSINESS_ACCOUNT_ID
+        sync: false
+      - key: WA_ACCESS_TOKEN
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+
+databases:
+  - name: whatsapp-ai-db
+    plan: free
+    postgresMajorVersion: "16"
+    databaseName: wa
+    user: wa

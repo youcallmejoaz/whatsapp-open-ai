@@ -43,6 +43,8 @@ For dashboard development with hot reload, run `pnpm --filter @wa/web dev` (port
 
 Or run everything in containers: `docker compose up --build`.
 
+**Deploy it:** Render Blueprint ([`render.yaml`](render.yaml)) or Railway. A fresh deploy starts in demo mode with sample data. See **[docs/DEPLOY.md](docs/DEPLOY.md)**.
+
 ## Going live with Meta
 
 1. Create a Meta app (type *Business*), add **WhatsApp**, and link your Business Portfolio.
@@ -91,7 +93,7 @@ Handles Android and iOS exports, Arabic-locale dates (٣١/١٢/٢٠٢٥، ٩:١
 pnpm typecheck && pnpm lint && pnpm test   # tests need Postgres: TEST_DATABASE_URL (default postgres://wa:wa@localhost:5432/wa_test)
 ```
 
-- **51 tests:**
+- **53 tests:**
   - signature verification, webhook normalization (text, voice, image, location, status, echo, history);
   - Arabic normalization and Arabizi detection;
   - chat-export parsing;

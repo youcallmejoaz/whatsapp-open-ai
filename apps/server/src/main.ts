@@ -5,6 +5,7 @@ import { createDb } from './db/db.ts';
 import { migrate } from './db/migrate.ts';
 import { jobHandlers } from './jobs.ts';
 import { PgBossQueue } from './queue.ts';
+import { seedDemoIfEmpty } from './demo/seed.ts';
 import { ensureAdmin } from './services/auth.ts';
 
 const cfg = loadConfig();
@@ -26,6 +27,8 @@ const ctx: AppContext = {
 const app = await buildApp(ctx);
 ctx.log = app.log;
 await ensureAdmin(ctx);
+const seeded = await seedDemoIfEmpty(ctx);
+if (seeded) app.log.info(seeded.counts, 'seeded demo data (DEMO_SEED_ON_BOOT)');
 await queue.register(jobHandlers(ctx));
 await queue.schedule('report.generate', cfg.REPORT_CRON, cfg.REPORT_TZ);
 await queue.schedule('templates.sync', '0 */6 * * *', 'UTC');

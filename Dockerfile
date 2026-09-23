@@ -14,7 +14,7 @@ COPY . .
 RUN pnpm --filter @wa/web build
 
 FROM base AS runtime
-ENV NODE_ENV=production
+ENV NODE_ENV=production HOST=0.0.0.0
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/server/package.json apps/server/
 COPY apps/web/package.json apps/web/

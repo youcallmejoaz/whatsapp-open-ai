@@ -32,6 +32,8 @@ const EnvSchema = z
     BUSINESS_PROFILE_FILE: z.string().default(''),
     REPORT_LANGUAGE: z.enum(['en', 'ar']).default('en'),
     AUTO_DRAFT: bool.default(true),
+    // Load the demo dataset on boot if the database is empty (WA_MODE=mock only).
+    DEMO_SEED_ON_BOOT: bool.default(false),
 
     // Scheduling / retention
     REPORT_CRON: z.string().default('0 18 * * *'),
@@ -63,8 +65,20 @@ const EnvSchema = z
 
 export type Config = z.infer<typeof EnvSchema>;
 
+/**
+ * Empty values count as unset (hosting dashboards often create blank variables),
+ * and PUBLIC_URL falls back to the URL the platform assigns (Render, Railway).
+ */
+function withPlatformDefaults(input: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== '')) as NodeJS.ProcessEnv;
+  if (env.PUBLIC_URL) return env;
+  const url =
+    env.RENDER_EXTERNAL_URL ?? (env.RAILWAY_PUBLIC_DOMAIN ? `https://${env.RAILWAY_PUBLIC_DOMAIN}` : undefined);
+  return url ? { ...env, PUBLIC_URL: url } : env;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const parsed = EnvSchema.safeParse(env);
+  const parsed = EnvSchema.safeParse(withPlatformDefaults(env));
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid configuration:\n${lines.join('\n')}`);
