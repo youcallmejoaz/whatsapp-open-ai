@@ -15,8 +15,15 @@ import { MockWhatsAppClient, type WhatsAppClient } from '../src/whatsapp/client.
 
 export const TEST_DB = process.env.TEST_DATABASE_URL ?? 'postgres://wa:wa@localhost:5432/wa_test';
 
+export interface LogEntry {
+  level: 'info' | 'warn' | 'error' | 'debug';
+  obj: unknown;
+  msg: string | undefined;
+}
+
 export interface TestEnv {
   ctx: AppContext;
+  logs: LogEntry[];
   db: Db;
   queue: InlineQueue;
   cfg: Config;
@@ -36,13 +43,17 @@ export async function setup(overrides: { wa?: (db: Db) => WhatsAppClient; env?: 
   }
   await db.query('TRUNCATE users, contacts, webhook_events, reports, audit_log, mock_outbox, templates RESTART IDENTITY CASCADE');
   const queue = new InlineQueue();
+  const logs: LogEntry[] = [];
+  const capture = (level: LogEntry['level']) => (obj: unknown, msg?: string) => {
+    logs.push({ level, obj, msg });
+  };
   const ctx: AppContext = {
     cfg,
     db,
     ai: new MockAiProvider(),
     wa: overrides.wa ? overrides.wa(db) : new MockWhatsAppClient(db),
     queue,
-    log: { info() {}, warn() {}, error() {}, debug() {} } as unknown as AppContext['log'],
+    log: { info: capture('info'), warn: capture('warn'), error: capture('error'), debug: capture('debug') } as unknown as AppContext['log'],
     businessProfile: 'Test restaurant. Open 11:00-23:00.',
   };
   await queue.register(jobHandlers(ctx));
@@ -52,6 +63,7 @@ export async function setup(overrides: { wa?: (db: Db) => WhatsAppClient; env?: 
   await app.ready();
   return {
     ctx,
+    logs,
     db,
     queue,
     cfg,

@@ -42,6 +42,33 @@ describe('webhook endpoint', () => {
   });
 });
 
+describe('webhook diagnostics in logs', () => {
+  it('warns with the received phone_number_id when it does not match', async () => {
+    const res = await postWebhook(env, inboundPayload({ phoneNumberId: '999' }, khalid, { kind: 'text', text: 'hello?' }, new Date()));
+    expect(res.statusCode).toBe(200);
+    expect((await env.db.query('SELECT count(*)::int AS n FROM messages')).rows[0].n).toBe(0);
+    const warn = env.logs.find((l) => l.level === 'warn' && l.msg?.includes('phone_number_id'));
+    expect(warn?.obj).toMatchObject({ expected: '111', received: ['999'], fields: ['messages'] });
+  });
+
+  it('warns about payloads that are not WhatsApp events', async () => {
+    await postWebhook(env, { object: 'page', entry: [] });
+    expect(env.logs.some((l) => l.level === 'warn' && l.msg?.includes('not a WhatsApp Business Account event'))).toBe(true);
+  });
+
+  it('logs counts (not content) for processed webhooks', async () => {
+    const payload = inboundPayload(META, khalid, { kind: 'text', text: 'Where is my order?' }, minutesAgo(1));
+    await postWebhook(env, payload);
+    await postWebhook(env, payload);
+    const processed = env.logs.filter((l) => l.msg === 'webhook processed').map((l) => l.obj);
+    expect(processed).toEqual([
+      expect.objectContaining({ messages: 1, duplicates: 0, statuses: 0, fields: ['messages'] }),
+      expect.objectContaining({ messages: 0, duplicates: 1 }),
+    ]);
+    expect(JSON.stringify(processed)).not.toContain('order');
+  });
+});
+
 describe('inbound pipeline', () => {
   it('stores, triages and auto-drafts an Arabic complaint', async () => {
     const payload = inboundPayload(META, khalid, { kind: 'text', text: 'طلبي رقم 4821 وصل بارد 😡 خدمة سيئة' }, minutesAgo(5));

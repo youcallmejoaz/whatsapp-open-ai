@@ -78,3 +78,7 @@ Test it: message your number from WhatsApp. The message should show up in the da
 | Health check fails right after deploy | The first boot runs migrations and seeding, which can take ~30 s on a free plan. Check the logs for `ready` |
 | Meta "Verify and save" fails | The service is asleep (free plan) or the verify token doesn't match. Open the URL once to wake it, then retry |
 | Logs show `webhook signature mismatch` | `WA_APP_SECRET` isn't the App secret of the Meta app the webhook belongs to |
+| Logs show `webhook ignored: phone_number_id does not match` | `WA_PHONE_NUMBER_ID` is wrong (often the phone number itself or the WABA ID). Copy the ID from the `received` field of that log line, or from API Setup. Meta's **Test** button always sends a fake ID, so this warning is expected for test payloads |
+| Logs show `webhook processed` with `messages: 1`, but the inbox looks empty | The message didn't need a reply (e.g. "hi"). Open the **All** tab |
+| No `webhook received` lines at all | Meta isn't delivering. Subscribe the `messages` webhook field, and link the WABA to the app once: `POST https://graph.facebook.com/v23.0/<WA_BUSINESS_ACCOUNT_ID>/subscribed_apps` with your access token (or use the Graph API Explorer) |
+| Only `request completed` lines | Each request logs `incoming request` (with the URL) and `request completed` (with the status) under the same `reqId`. Search for the `reqId` to see which URL it was |

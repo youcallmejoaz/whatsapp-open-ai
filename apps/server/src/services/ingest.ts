@@ -2,7 +2,7 @@ import { normalizeArabic } from '@wa/shared';
 import type { AppContext } from '../context.ts';
 import { tx, type Queryable } from '../db/db.ts';
 import { supersedeAiDrafts } from './analyze.ts';
-import { normalizeWebhook, type MessageEvent, type StatusEvent } from '../whatsapp/normalize.ts';
+import { describeWebhook, normalizeWebhook, type MessageEvent, type StatusEvent } from '../whatsapp/normalize.ts';
 
 export interface IngestInput {
   source: 'webhook' | 'echo' | 'history' | 'import' | 'api';
@@ -135,19 +135,43 @@ export async function processWebhookEvent(ctx: AppContext, eventId: number): Pro
 
   const events = normalizeWebhook(row.payload, ctx.cfg.WA_PHONE_NUMBER_ID);
   const toAnalyze: { messageId: string; triage: boolean }[] = [];
+  const { phoneNumberIds, fields } = describeWebhook(row.payload);
+  // The most common live misconfiguration: WA_PHONE_NUMBER_ID is the phone number
+  // or the WABA ID instead of the Phone number ID. Say so loudly instead of dropping silently.
+  if (fields.length === 0) {
+    ctx.log.warn({ eventId }, 'webhook ignored: payload is not a WhatsApp Business Account event');
+  } else if (phoneNumberIds.length > 0 && !phoneNumberIds.includes(ctx.cfg.WA_PHONE_NUMBER_ID)) {
+    ctx.log.warn(
+      { eventId, expected: ctx.cfg.WA_PHONE_NUMBER_ID, received: phoneNumberIds, fields },
+      'webhook ignored: phone_number_id does not match WA_PHONE_NUMBER_ID',
+    );
+  }
+  let stored = 0;
+  let duplicates = 0;
+  let statuses = 0;
 
   await tx(ctx.db, async (c) => {
     for (const e of events) {
       if (e.kind === 'status') {
         await applyStatus(c, e);
+        statuses++;
         continue;
       }
-      const stored = await ingestMessage(c, fromEvent(e));
+      const msg = await ingestMessage(c, fromEvent(e));
+      if (!msg) {
+        duplicates++;
+        continue;
+      }
+      stored++;
       // Triage only live inbound traffic; history/echo messages are indexed for search.
-      if (stored) toAnalyze.push({ messageId: stored.id, triage: e.source === 'webhook' && e.direction === 'in' });
+      toAnalyze.push({ messageId: msg.id, triage: e.source === 'webhook' && e.direction === 'in' });
     }
     await c.query('UPDATE webhook_events SET processed_at = now(), error = NULL WHERE id = $1', [eventId]);
   });
 
+  if (events.length > 0) {
+    // Counts only: no message text or phone numbers in logs.
+    ctx.log.info({ eventId, messages: stored, duplicates, statuses, fields }, 'webhook processed');
+  }
   for (const job of toAnalyze) await ctx.queue.send('message.analyze', job);
 }

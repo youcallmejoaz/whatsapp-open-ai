@@ -172,6 +172,22 @@ function toMessageEvent(
   };
 }
 
+/** Summary of a payload for logs: which phone number IDs and fields it targets. No PII. */
+export function describeWebhook(payload: unknown): { phoneNumberIds: string[]; fields: string[] } {
+  const parsed = Payload.safeParse(payload);
+  if (!parsed.success) return { phoneNumberIds: [], fields: [] };
+  const ids = new Set<string>();
+  const fields = new Set<string>();
+  for (const entry of parsed.data.entry) {
+    for (const change of entry.changes) {
+      fields.add(change.field);
+      const id = (change.value as { metadata?: { phone_number_id?: unknown } } | null)?.metadata?.phone_number_id;
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  return { phoneNumberIds: [...ids], fields: [...fields] };
+}
+
 /**
  * Flatten a webhook payload into domain events for our phone number.
  * Changes for other phone numbers on the same WABA are ignored.
